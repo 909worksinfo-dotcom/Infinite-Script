@@ -456,144 +456,144 @@ if st.session_state.generated_acts:
             st.session_state.outline = edited_outline
 
         st.markdown("**请选择生成批次（每次 10 集）：**")
-    c1, c2, c3 = st.columns(3)
-
-
-    # 定义生成函数
-    def gen_script(label, r):
-        with st.spinner(f"正在使用 {provider} 生成 {label} 分镜..."):
-            p = Prompts.SCRIPT_TASK_TEMPLATE.format(episode_range=r) + f"\n[大纲]\n{st.session_state.outline}"
-            res = llm_service.generate(Prompts.SCRIPT_SYSTEM, p)
-            st.session_state.scripts[label] = res
-            if not res.startswith("❌"):
-                st.success(f"✅ {label} 生成成功！")
-            else:
-                st.error(res)
-
-
-    with c1:
-        if st.button("生成 1-10 集"): gen_script("1-10集", "1-10")
-    with c2:
-        if st.button("生成 11-20 集"): gen_script("11-20集", "11-20")
-    with c3:
-        if st.button("生成 21-30 集"): gen_script("21-30集", "21-30")
-
-    # 结果展示区
-    if st.session_state.scripts:
-        st.markdown("#### 📜 脚本预览与下载")
-        tabs = st.tabs(list(st.session_state.scripts.keys()))
-
-        for i, (key, content) in enumerate(st.session_state.scripts.items()):
-            with tabs[i]:
-                try:
-                    # [Step 1] 正则定位内容
-                    match = re.search(r"((第\s*\d+\s*集|Episode|镜号).*$)", content, re.DOTALL)
-
-                    if match:
-                        csv_text = match.group(1).strip()
-                        csv_text = re.sub(r'```\w*\n?', '', csv_text).replace('```', '').strip()
-
-                        import csv
-
-                        data_rows = []
-                        reader = csv.reader(csv_text.splitlines())
-
-                        for row in reader:
-                            if not row: continue
-
-                            row = [str(x).strip() for x in row]
-
-                            # --- 逻辑 A：识别分集标题行 ---
-                            row_str = "".join(row)
-                            if (len(row) == 1 or (len(row) < 3 and len(row_str) < 20)) and (
-                                    "集" in row_str or "Episode" in row_str):
-                                title = row[0].replace(",", "")
-                                data_rows.append([f"🎬 {title} 🎬", "", "", ""])
-                                continue
-
-                            # --- 逻辑 B：处理表头 ---
-                            if "镜号" in row[0]:
-                                continue
-
-                            # --- 逻辑 C：数据行格式化 (🌟核心修复：智能分离画面与台词) ---
-                            processed_row = []
-                            if len(row) >= 3:
-                                if len(row) == 3: row.append("")
-
-                                # 将第3列及之后的所有内容合并，我们依靠特征来手动切分
-                                rest_text = ",".join(row[2:])
-
-                                # 正则寻找台词起点：(句首或标点) + (2-25位英文名/括号) + 冒号 + 非空白字符
-                                # 例如：识别 ",Maya: L" 或 "。SFX: ("
-                                match_dialogue = re.search(r'(?:^|[,。！？”\s])\s*([A-Za-z0-9\s\(\)\-]{2,25}:\s*\S)',
-                                                           rest_text)
-
-                                if match_dialogue:
-                                    # match_dialogue.start(1) 能够精确定位到 "Maya:" 的 M 字母
-                                    idx = match_dialogue.start(1)
-                                    # 切片分离
-                                    visual_part = rest_text[:idx].strip(' ,\"')
-                                    dialogue_part = rest_text[idx:].strip(' ,\"')
-                                    processed_row = [row[0], row[1], visual_part, dialogue_part]
-                                else:
-                                    # 如果没有特征台词标识，退回安全模式
-                                    if len(row) == 4:
-                                        processed_row = row
+        c1, c2, c3 = st.columns(3)
+    
+    
+        # 定义生成函数
+        def gen_script(label, r):
+            with st.spinner(f"正在使用 {provider} 生成 {label} 分镜..."):
+                p = Prompts.SCRIPT_TASK_TEMPLATE.format(episode_range=r) + f"\n[大纲]\n{st.session_state.outline}"
+                res = llm_service.generate(Prompts.SCRIPT_SYSTEM, p)
+                st.session_state.scripts[label] = res
+                if not res.startswith("❌"):
+                    st.success(f"✅ {label} 生成成功！")
+                else:
+                    st.error(res)
+    
+    
+        with c1:
+            if st.button("生成 1-10 集"): gen_script("1-10集", "1-10")
+        with c2:
+            if st.button("生成 11-20 集"): gen_script("11-20集", "11-20")
+        with c3:
+            if st.button("生成 21-30 集"): gen_script("21-30集", "21-30")
+    
+        # 结果展示区
+        if st.session_state.scripts:
+            st.markdown("#### 📜 脚本预览与下载")
+            tabs = st.tabs(list(st.session_state.scripts.keys()))
+    
+            for i, (key, content) in enumerate(st.session_state.scripts.items()):
+                with tabs[i]:
+                    try:
+                        # [Step 1] 正则定位内容
+                        match = re.search(r"((第\s*\d+\s*集|Episode|镜号).*$)", content, re.DOTALL)
+    
+                        if match:
+                            csv_text = match.group(1).strip()
+                            csv_text = re.sub(r'```\w*\n?', '', csv_text).replace('```', '').strip()
+    
+                            import csv
+    
+                            data_rows = []
+                            reader = csv.reader(csv_text.splitlines())
+    
+                            for row in reader:
+                                if not row: continue
+    
+                                row = [str(x).strip() for x in row]
+    
+                                # --- 逻辑 A：识别分集标题行 ---
+                                row_str = "".join(row)
+                                if (len(row) == 1 or (len(row) < 3 and len(row_str) < 20)) and (
+                                        "集" in row_str or "Episode" in row_str):
+                                    title = row[0].replace(",", "")
+                                    data_rows.append([f"🎬 {title} 🎬", "", "", ""])
+                                    continue
+    
+                                # --- 逻辑 B：处理表头 ---
+                                if "镜号" in row[0]:
+                                    continue
+    
+                                # --- 逻辑 C：数据行格式化 (🌟核心修复：智能分离画面与台词) ---
+                                processed_row = []
+                                if len(row) >= 3:
+                                    if len(row) == 3: row.append("")
+    
+                                    # 将第3列及之后的所有内容合并，我们依靠特征来手动切分
+                                    rest_text = ",".join(row[2:])
+    
+                                    # 正则寻找台词起点：(句首或标点) + (2-25位英文名/括号) + 冒号 + 非空白字符
+                                    # 例如：识别 ",Maya: L" 或 "。SFX: ("
+                                    match_dialogue = re.search(r'(?:^|[,。！？”\s])\s*([A-Za-z0-9\s\(\)\-]{2,25}:\s*\S)',
+                                                               rest_text)
+    
+                                    if match_dialogue:
+                                        # match_dialogue.start(1) 能够精确定位到 "Maya:" 的 M 字母
+                                        idx = match_dialogue.start(1)
+                                        # 切片分离
+                                        visual_part = rest_text[:idx].strip(' ,\"')
+                                        dialogue_part = rest_text[idx:].strip(' ,\"')
+                                        processed_row = [row[0], row[1], visual_part, dialogue_part]
                                     else:
-                                        processed_row = [row[0], row[1], ",".join(row[2:-1]), row[-1]]
-                            elif len(row) < 3:
-                                row.extend([""] * (4 - len(row)))
-                                processed_row = row
-
-                            # --- [Step 3.5] 逻辑 E：强力清洗景别关键词 (保留上一版的优化) ---
-                            if processed_row and len(processed_row) == 4:
-                                clean_visual = re.sub(r'【.*?】|\[.*?\]', '', processed_row[2]).strip()
-                                processed_row[2] = clean_visual
-
-                            # --- 逻辑 D：隐式分集检测 ---
-                            if processed_row and processed_row[0] == "1" and len(data_rows) > 0:
-                                if "🎬" not in data_rows[-1][0]:
-                                    data_rows.append(["🎬 下一集 / Next Episode 🎬", "", "", ""])
-
-                            if processed_row:
-                                data_rows.append(processed_row)
-
-                        # [Step 4] 构建 DataFrame
-                        header_list = ["镜号", "场景", "画面内容 (Visual)", "台词 (Dialogue) & 音效 (SFX)"]
-
-                        if len(data_rows) > 0:
-                            df = pd.DataFrame(data_rows, columns=header_list)
+                                        # 如果没有特征台词标识，退回安全模式
+                                        if len(row) == 4:
+                                            processed_row = row
+                                        else:
+                                            processed_row = [row[0], row[1], ",".join(row[2:-1]), row[-1]]
+                                elif len(row) < 3:
+                                    row.extend([""] * (4 - len(row)))
+                                    processed_row = row
+    
+                                # --- [Step 3.5] 逻辑 E：强力清洗景别关键词 (保留上一版的优化) ---
+                                if processed_row and len(processed_row) == 4:
+                                    clean_visual = re.sub(r'【.*?】|\[.*?\]', '', processed_row[2]).strip()
+                                    processed_row[2] = clean_visual
+    
+                                # --- 逻辑 D：隐式分集检测 ---
+                                if processed_row and processed_row[0] == "1" and len(data_rows) > 0:
+                                    if "🎬" not in data_rows[-1][0]:
+                                        data_rows.append(["🎬 下一集 / Next Episode 🎬", "", "", ""])
+    
+                                if processed_row:
+                                    data_rows.append(processed_row)
+    
+                            # [Step 4] 构建 DataFrame
+                            header_list = ["镜号", "场景", "画面内容 (Visual)", "台词 (Dialogue) & 音效 (SFX)"]
+    
+                            if len(data_rows) > 0:
+                                df = pd.DataFrame(data_rows, columns=header_list)
+                            else:
+                                df = pd.DataFrame(columns=header_list)
+    
+                            # [Step 5] 样式复刻
+                            st.dataframe(
+                                df,
+                                use_container_width=True,
+                                hide_index=True,
+                                column_config={
+                                    "镜号": st.column_config.TextColumn("镜号", width="small"),
+                                    "场景": st.column_config.TextColumn("场景", width="medium"),
+                                    "画面内容 (Visual)": st.column_config.TextColumn("画面内容 (Visual)", width="large"),
+                                    "台词 (Dialogue) & 音效 (SFX)": st.column_config.TextColumn(
+                                        "台词 (Dialogue) & 音效 (SFX)", width="large"),
+                                }
+                            )
+    
+                            # [Step 6] 下载按钮 (保留防乱码的 utf-8-sig)
+                            csv_out = df.to_csv(index=False).encode('utf-8-sig')
+    
+                            st.download_button(
+                                label=f"📥 下载 {key} CSV (Excel专用版)",
+                                data=csv_out,
+                                file_name=f"script_{key}.csv",
+                                mime='text/csv'
+                            )
                         else:
-                            df = pd.DataFrame(columns=header_list)
-
-                        # [Step 5] 样式复刻
-                        st.dataframe(
-                            df,
-                            use_container_width=True,
-                            hide_index=True,
-                            column_config={
-                                "镜号": st.column_config.TextColumn("镜号", width="small"),
-                                "场景": st.column_config.TextColumn("场景", width="medium"),
-                                "画面内容 (Visual)": st.column_config.TextColumn("画面内容 (Visual)", width="large"),
-                                "台词 (Dialogue) & 音效 (SFX)": st.column_config.TextColumn(
-                                    "台词 (Dialogue) & 音效 (SFX)", width="large"),
-                            }
-                        )
-
-                        # [Step 6] 下载按钮 (保留防乱码的 utf-8-sig)
-                        csv_out = df.to_csv(index=False).encode('utf-8-sig')
-
-                        st.download_button(
-                            label=f"📥 下载 {key} CSV (Excel专用版)",
-                            data=csv_out,
-                            file_name=f"script_{key}.csv",
-                            mime='text/csv'
-                        )
-                    else:
-                        st.warning("⚠️ 未检测到有效内容，请检查生成结果。")
+                            st.warning("⚠️ 未检测到有效内容，请检查生成结果。")
+                            st.text(content)
+    
+                    except Exception as e:
+                        st.error(f"⚠️ 解析异常: {e}")
+                        st.text("原始返回内容：")
                         st.text(content)
-
-                except Exception as e:
-                    st.error(f"⚠️ 解析异常: {e}")
-                    st.text("原始返回内容：")
-                    st.text(content)
